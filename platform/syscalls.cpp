@@ -3,7 +3,6 @@
 // ** Some required functions for C-language startup.
 // **
 // **   by Adam Pierce <adam@siliconsparrow.com>
-// **   for CommBox Pty. Ltd. Australia
 // **   created 1-Jun-2016
 // **
 // ***************************************************************************
@@ -13,10 +12,6 @@
 #include <sys/stat.h>
 #include <stdint.h>
 #include <errno.h>
-
-#ifdef __DEBUG
-#include "SerialConsole.h"
-#endif
 
 extern "C" {
 #if 0

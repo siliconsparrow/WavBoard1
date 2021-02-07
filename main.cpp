@@ -35,7 +35,6 @@
 
 // TODO:
 // * Create a Makefile
-// * SPI driver
 // * SD card driver
 // * Fat32 filesystem (only needs to be read-only)
 // * WAV file decoder
@@ -60,8 +59,6 @@ void delay(void)
         __asm("NOP"); /* delay */
     }
 }
-
-
 
 // Engage HIRC mode for the main clock. This is the fastest
 // clock speed on the KL17 (48MHz).

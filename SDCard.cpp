@@ -7,6 +7,7 @@
 // **
 // *************************************************************************
 
+#ifdef OLD
 #include "SDCard.h"
 #include "board.h"
 
@@ -28,7 +29,7 @@ SDCard::SDCard()
 	_csPort.setPin(SDCARD_CS_PIN);
 }
 
-
+#endif // OLD
 
 #ifdef OLD
 

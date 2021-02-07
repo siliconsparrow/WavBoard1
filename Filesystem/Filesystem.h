@@ -8,7 +8,8 @@
 #ifndef FILESYSTEM_H_
 #define FILESYSTEM_H_
 
-#include "SDCard.h"
+#include "Spi.h"
+#include "Gpio.h"
 
 class Filesystem
 {
@@ -16,7 +17,8 @@ public:
 	Filesystem();
 
 private:
-	SDCard _sdcard;
+	Spi  _spi;
+	Gpio _csPort;
 };
 
 #endif /* FILESYSTEM_H_ */

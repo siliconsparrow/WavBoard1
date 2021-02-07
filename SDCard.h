@@ -12,6 +12,7 @@
 #ifndef SDCARD_H_
 #define SDCARD_H_
 
+#ifdef OLD
 #include "Spi.h"
 #include "Gpio.h"
 
@@ -37,6 +38,7 @@ private:
 	Spi  _spi;
 	Gpio _csPort;
 };
+#endif // OLD
 
 #ifdef OLD
 
