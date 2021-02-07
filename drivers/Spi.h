@@ -27,7 +27,8 @@ public:
 	void recv(uint8_t *buffer, unsigned size);
 
 private:
-	Dma      _dma;
+	Dma      _dmaTx;
+	Dma      _dmaRx;
 	uint32_t _c2;
 };
 

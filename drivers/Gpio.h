@@ -18,7 +18,7 @@ public:
 
 	Gpio(GpioPort port);
 
-	void setPin(unsigned pin, GpioDir direction);
+	void setPinMode(unsigned pin, GpioDir direction);
 
 	inline void set(unsigned mask)    { _gpio->PSOR = mask; }
 	inline void clr(unsigned mask)    { _gpio->PCOR = mask; }

@@ -77,7 +77,7 @@ public:
 
 	Dma(unsigned channel, DmaMuxChannel muxChan = muxNone);
 
-	void setMuxChannel(DmaMuxChannel muxChan);
+	//void setMuxChannel(DmaMuxChannel muxChan);
 	void abort();
 	void startTransfer(void *srcAddr, void *destAddr, unsigned transferBytes, uint32_t flags);
 	bool isCompleted() const;

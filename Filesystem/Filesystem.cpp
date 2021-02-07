@@ -8,9 +8,26 @@
 #include "Filesystem.h"
 #include "board.h"
 
+File::File()
+{
+}
+
+bool File::open(const TCHAR *filename, FileMode mode)
+{
+	return FR_OK == f_open(&_f, filename, (BYTE)mode);
+}
+
+Filesystem::Filesystem()
+{
+	f_mount(&_fs, "0", 1);
+}
+
+#ifdef OLD
 Filesystem::Filesystem()
 	: _csPort(SDCARD_CS_PORT)
 {
+
+	// TEST OF THE DMA SPI.
 	_csPort.setPin(SDCARD_CS_PIN, Gpio::OUTPUT);
 	_csPort.set(1 << SDCARD_CS_PIN);
 
@@ -25,3 +42,4 @@ Filesystem::Filesystem()
 	_spi.recv(buf, 5);
 	_csPort.setPin(SDCARD_CS_PIN);
 }
+#endif // OLD

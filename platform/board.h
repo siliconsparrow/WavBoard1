@@ -5,8 +5,13 @@
 
 #include "MKL17Z644.h"
 
-#define CORE_CLOCK 48000000 // CPU core clocked at 48MHz
-#define BUS_CLOCK  24000000 // Peripherals clocked at 24MHz
+#define CORE_CLOCK   48000000 // CPU core clocked at 48MHz
+#define BUS_CLOCK    24000000 // Peripherals clocked at 24MHz
+#define SYSTICK_FREQ      100 // Number of systick interrupts per second.
+
+// Convert milliseconds to system ticks.
+#define MS_TO_TICKS(ms) (((ms)*(SYSTICK_FREQ))/1000)
+
 
 // Definitions for the FlexIO-bases I2S driver.
 #define I2S_CLK_TMR_INDEX 0 // Use TIMER0 to generate I2S clock.
@@ -31,7 +36,8 @@
 // Definitions for the SPI interface.
 #define SPI_PERIPH_CLOCK   SystemIntegration::kCLOCK_Spi0  // Peripheral clock to activate.
 #define SPI_PORT_CLOCK     SystemIntegration::kCLOCK_PortE // Port clock to activate.
-#define SPI_DMA_CHANNEL    1
+#define SPI_DMA_CHANNEL_TX 1
+#define SPI_DMA_CHANNEL_RX 2
 #define SPI_PORT           PORTE
 #define SPI_CS_PIN_ALT     SystemIntegration::ALT2
 #define SPI_CLK_PIN_INDEX  17                      // SPI clock out on pin 6 (PTE17, alt2)

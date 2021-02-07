@@ -16,13 +16,13 @@ Dma::Dma(unsigned channel, DmaMuxChannel muxChan)
 	: _channel(channel)
 {
 	SystemIntegration::enableClock(SystemIntegration::kCLOCK_Dmamux0);
-	setMuxChannel(muxChan);
-}
-
-void Dma::setMuxChannel(DmaMuxChannel muxChan)
-{
 	DMAMUX0->CHCFG[_channel] = DMAMUX_CHCFG_ENBL_MASK | muxChan;
 }
+
+//void Dma::setMuxChannel(DmaMuxChannel muxChan)
+//{
+//	DMAMUX0->CHCFG[_channel] = DMAMUX_CHCFG_ENBL_MASK | muxChan;
+//}
 
 void Dma::abort()
 {
@@ -46,7 +46,7 @@ void Dma::startTransfer(void *srcAddr, void *destAddr, unsigned transferBytes, u
 	FLEXIO_DMA->DMA[_channel].DSR_BCR = DMA_DSR_BCR_BCR(transferBytes);
 
 	// Use cycle stealing (DMA transfer during unused clock cycles) if we are sending data to a peripheral.
-	if((flags & (DMA_INC_SRC | DMA_INC_DST)) == DMA_INC_SRC)
+	//if((flags & (DMA_INC_SRC | DMA_INC_DST)) == DMA_INC_SRC)
 		flags |= DMA_DCR_CS_MASK;
 
 	// Set DMA Control Register

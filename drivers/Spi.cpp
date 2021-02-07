@@ -38,7 +38,8 @@ enum _spi_shift_direction
 // I'll probably only use the DMA for larger transfers.
 
 Spi::Spi()
-	: _dma(SPI_DMA_CHANNEL)
+	: _dmaTx(SPI_DMA_CHANNEL_TX, Dma::muxSPI0tx)
+	, _dmaRx(SPI_DMA_CHANNEL_RX, Dma::muxSPI0rx)
 	, _c2(0)
 {
 	// Set up I/O pins.
@@ -52,14 +53,11 @@ Spi::Spi()
 	SPI_PERIPH->C1 &= ~SPI_C1_SPE_MASK;
 
 	// Configure clock polarity and phase, set SPI to master.
-    SPI_PERIPH->C1 = SPI_C1_MSTR(1U) | SPI_C1_CPOL(SPI_POLARITY) | SPI_C1_CPHA(SPI_PHASE) | SPI_C1_LSBFE(SPI_BITORDER);
+    SPI_PERIPH->C1 = SPI_C1_SPE_MASK | SPI_C1_MSTR(1U) | SPI_C1_CPOL(SPI_POLARITY) | SPI_C1_CPHA(SPI_PHASE) | SPI_C1_LSBFE(SPI_BITORDER);
     SPI_PERIPH->C2 = _c2; // Other configuration options.
 
     // Set the baud rate.
     setFrequency(kDefaultFreq);
-
-    // Enable SPI
-    SPI_PERIPH->C1 |= SPI_C1_SPE_MASK;
 }
 
 // Baud rate is calculated from the peripheral clock which should be 24MHz.
@@ -106,34 +104,55 @@ void Spi::setFrequency(uint32_t freq)
 void Spi::send(const uint8_t *buffer, unsigned size)
 {
 	// Start DMA transfer
-	_dma.abort();
-	_dma.setMuxChannel(Dma::muxSPI0tx);
-	_dma.startTransfer((void *)buffer, (void *)&SPI_PERIPH->DL, size, DMA_MEM_TO_PERIPH | DMA_SRC_8BIT | DMA_DST_8BIT);
+	//_dma.abort();
+	_dmaTx.startTransfer((void *)buffer, (void *)&SPI_PERIPH->DL, size, DMA_MEM_TO_PERIPH | DMA_SRC_8BIT | DMA_DST_8BIT);
 
 	// Put SPI into DMA Transmit mode.
 	SPI_PERIPH->C2 = _c2 | SPI_C2_TXDMAE_MASK;
 
 	// Block until transfer is complete.
-	while(!_dma.isCompleted())
+	while(!_dmaTx.isCompleted())
 		;
 }
 
 // Blocking receive using DMA.
 void Spi::recv(uint8_t *buffer, unsigned size)
 {
-	// Set up DMA transfer.
-	_dma.abort();
-	_dma.setMuxChannel(Dma::muxSPI0rx);
-	_dma.startTransfer((void *)&SPI_PERIPH->DL, (void *)buffer, size, DMA_PERIPH_TO_MEM | DMA_SRC_8BIT | DMA_DST_8BIT);
+	// Set up DMA transfer. For SPI you need to send dummy data to generate clock.
+	//	_dma.abort();
+	uint8_t dummy = 0xFF;
+	_dmaTx.startTransfer((void *)&dummy, (void *)&SPI_PERIPH->DL, size, DMA_SRC_8BIT | DMA_DST_8BIT);
+	_dmaRx.startTransfer((void *)&SPI_PERIPH->DL, (void *)buffer, size, DMA_PERIPH_TO_MEM | DMA_SRC_8BIT | DMA_DST_8BIT);
 
-	// Put SPI into DMA Receive mode.
-	SPI_PERIPH->C2 = _c2 | SPI_C2_RXDMAE_MASK;
+//	// Reset the DMA channel.
+//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DSR_BCR |= DMA_DSR_BCR_DONE_MASK;
+//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DCR = 0;
+//
+//	// Set source address
+//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].SAR = (uint32_t)&SPI_PERIPH->DL;
+//
+//	// Set destination address
+//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DAR = (uint32_t)buffer;
+//
+//	// Set transfer byte count
+//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DSR_BCR = DMA_DSR_BCR_BCR(size);
+//
+//	// Set DMA Control Register
+//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DCR = DMA_INC_DST | DMA_SRC_8BIT | DMA_DST_8BIT | DMA_DCR_D_REQ_MASK | DMA_DCR_CS_MASK | DMA_DCR_ERQ_MASK;
+//
+//	// Start shoveling bytes.
+//	//FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DCR |= DMA_DCR_START_MASK; // DMA_DCR_ERQ_MASK;
+//
+
+	// Put SPI into DMA Transmit/Receive mode.
+	SPI_PERIPH->C2 = _c2 | SPI_C2_RXDMAE_MASK | SPI_C2_TXDMAE_MASK;
+	//SPI_PERIPH->DL = 0xFF;
 
 	// TEST - try a manual start.
-	//FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DCR |= DMA_DCR_START_MASK;
+//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DCR |= DMA_DCR_START_MASK;
 
-	// Block until transfer is complete.
-	while(!_dma.isCompleted())
+//	// Block until transfer is complete.
+	while(!_dmaRx.isCompleted())
 		;
 }
 

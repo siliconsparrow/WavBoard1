@@ -12,17 +12,25 @@
 #ifndef SDCARD_H_
 #define SDCARD_H_
 
-#ifdef OLD
 #include "Spi.h"
 #include "Gpio.h"
 
 class SDCard
 {
 public:
-	enum {
-		kBlockSize = 512, // SD Card standard block size.
-	};
+	static SDCard *instance();
 
+	SDCard();
+
+	bool getStatus();
+	bool init();
+	bool readBlocks(uint8_t *buf, unsigned sector, unsigned nSectors);
+	bool writeBlocks(const uint8_t *buf, unsigned sector, unsigned nSectors);
+	unsigned getBlockCount() const;
+	unsigned getBlockSize()  const;
+	unsigned getEraseSectorSize() const;
+
+private:
 	enum CardType
 	{
 		cardtypeNone = 0,
@@ -31,6 +39,24 @@ public:
 		cardtypeSDv2 = 4,
 		cardtypeSdc  = 6,
 	};
+
+	Spi      _spi;
+	Gpio     _csPort;
+	unsigned _cardType;
+
+	void select();
+	void deselect();
+};
+
+#ifdef OLD
+
+class SDCard
+{
+public:
+	enum {
+		kBlockSize = 512, // SD Card standard block size.
+	};
+
 
 	SDCard();
 
@@ -113,13 +139,11 @@ public:
 		, _cardType(SDCARD_NONE)
 	{ }
 
-	bool initCard();
 	bool readSector(unsigned sector, uint8_t *buffer);
 	bool writeSector(unsigned sector, const uint8_t *buffer);
 
 private:
 	SPI      *_spi;
-	unsigned  _cardType;
 
 	void     initHW();
 	void     cardSelect();

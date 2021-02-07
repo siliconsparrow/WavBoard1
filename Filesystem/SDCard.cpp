@@ -7,6 +7,119 @@
 // **
 // *************************************************************************
 
+#include "SDCard.h"
+#include "SystemTick.h"
+#include "board.h"
+
+// Speed tokens for SPI.
+enum {
+	kSpiSpeedSlow =   400000, // 400kHz for slow cards.
+	kSpiSpeedFast = 25000000, // 25MHz for fast cards.
+};
+
+// Single instance. We assume only the one card.
+static SDCard *g_sdCard = 0;
+
+SDCard *SDCard::instance()
+{
+	return g_sdCard;
+}
+
+SDCard::SDCard()
+	: _csPort(SDCARD_CS_PORT)
+	, _cardType(cardtypeNone)
+{
+	// Set up the chip select pin.
+	_csPort.setPinMode(SDCARD_CS_PIN, Gpio::OUTPUT);
+	deselect();
+
+	// Register this as the one and only SD card object.
+	g_sdCard = this;
+}
+
+// Return true if there is a valid card inserted.
+bool SDCard::getStatus()
+{
+	if(_cardType == cardtypeNone)
+		init();
+
+	return _cardType != cardtypeNone;
+}
+
+// SD Card initialisation procedure.
+bool SDCard::init()
+{
+	_cardType = cardtypeNone;
+
+	// Set SPI clock to 100kHz for initialisation, and clock card with cs = 1
+	deselect();
+	SystemTick::delayTicks(MS_TO_TICKS(100));
+	_spi.setFrequency(kSpiSpeedSlow);
+
+	// Provide 10 bytes worth of clock.
+	uint8_t buf[10];
+	_spi.recv(buf, 10);
+
+#ifdef OLD
+	// Start up the card.
+	_cardType = startSequence();
+	if(_cardType == cardtypeNone)
+		return false;
+
+	// Set SPI clock to 18MHz for data transfer.
+	sleepms(100);
+	_spi->setFrequency(kSpiSpeedFast);
+#endif // OLD
+	return true;
+}
+
+bool SDCard::readBlocks(uint8_t *buf, unsigned sector, unsigned nSectors)
+{
+	// TODO: Implement me.
+	return false;
+}
+
+bool SDCard::writeBlocks(const uint8_t *buf, unsigned sector, unsigned nSectors)
+{
+	// TODO: Implement me.
+	return false;
+}
+unsigned SDCard::getBlockCount() const
+{
+	// TODO: Implement me!
+	return 0;
+}
+
+unsigned SDCard::getBlockSize() const
+{
+	// TODO: Implement me!
+	return 0;
+}
+
+unsigned SDCard::getEraseSectorSize() const
+{
+	// TODO: Implement me!
+	return 0;
+}
+
+
+
+// Enable the card's SPI interface.
+void SDCard::select()
+{
+	_csPort.clrPin(SDCARD_CS_PIN);
+}
+
+// Disable the card's SPI interface.
+void SDCard::deselect()
+{
+	_csPort.setPin(SDCARD_CS_PIN);
+}
+
+
+
+
+
 #ifdef OLD
 #include "SDCard.h"
 #include "board.h"
@@ -266,28 +379,7 @@ unsigned SDCard::startSequence()
 	return SDCARD_NONE;
 }
 
-// SD Card initialisation procedure.
-bool SDCard::initCard()
-{
-	_cardType = SDCARD_NONE;
 
-    // Set SPI clock to 100kHz for initialisation, and clock card with cs = 1
-	cardDeselect();
-	sleepms(100);
-	_spi->setSpeed(SPI_SPEED_SDCARD_SLOW);
-	for(int i = 0; i < 10; i++)
-		_spi->clock();
-
-	// Start up the card.
-	_cardType = startSequence();
-	if(_cardType == SDCARD_NONE)
-		return false;
-
-	// Set SPI clock to 18MHz for data transfer.
-	sleepms(100);
-	_spi->setSpeed(SPI_SPEED_SDCARD_MAX);
-	return true;
-}
 
 bool SDCard::isCardOK()
 {

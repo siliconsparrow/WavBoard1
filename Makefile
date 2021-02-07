@@ -22,10 +22,14 @@ SOURCES = \
 	syscalls.cpp \
 	SystemIntegration.cpp \
 	Gpio.cpp \
+	SystemTick.cpp \
 	Dma.cpp \
 	Spi.cpp \
 	AudioSource.cpp \
 	AudioKinetisI2S.cpp \
+	SDCard.cpp \
+	diskio.cpp \
+	ff.c \
 	Filesystem.cpp \
 	main.cpp
 
@@ -81,6 +85,7 @@ ASFLAGS = $(COMMONFLAGS)
 LDFLAGS_DEBUG = $(COMMONFLAGS) -Wl,--no-wchar-size-warning -Wl,--gc-sections -Xlinker -T$(LINKER_SCRIPT_DEBUG)
 LDFLAGS_RELEASE = $(COMMONFLAGS) -Wl,--no-wchar-size-warning -Wl,--gc-sections -Xlinker -T$(LINKER_SCRIPT_RELEASE) 
 OBJS = $(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(patsubst %.S,%.o,$(notdir $(SOURCES)))))
+
 
 # ###################################
 # Build targets

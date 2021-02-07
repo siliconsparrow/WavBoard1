@@ -27,7 +27,7 @@ Gpio::Gpio(GpioPort port)
 }
 
 // Set pin data direction.
-void Gpio::setPin(unsigned pinNum, Gpio::GpioDir direction)
+void Gpio::setPinMode(unsigned pinNum, Gpio::GpioDir direction)
 {
 	// Set the pin mode to ALT1.
 	SystemIntegration::setPinAlt(_port, pinNum, SystemIntegration::ALT1);
