@@ -100,6 +100,22 @@ void Spi::setFrequency(uint32_t freq)
 	SPI_PERIPH->BR = SPI_BR_SPR(bestDivisor) | SPI_BR_SPPR(bestPrescaler);
 }
 
+// Send and receive a single byte (blocking).
+uint8_t Spi::xfer(uint8_t b)
+{
+	// Wait for port to be ready.
+	while(0 == (SPI_PERIPH->S & SPI_S_SPTEF_MASK))
+		;
+
+	SPI_PERIPH->DL = b;
+
+	// Block until transfer complete.
+	while(0 == (SPI_PERIPH->S & SPI_S_SPRF_MASK))
+		;
+
+	return SPI_PERIPH->DL;
+}
+
 // Blocking send using DMA.
 void Spi::send(const uint8_t *buffer, unsigned size)
 {
@@ -113,6 +129,9 @@ void Spi::send(const uint8_t *buffer, unsigned size)
 	// Block until transfer is complete.
 	while(!_dmaTx.isCompleted())
 		;
+
+	// Disable DMA.
+	SPI_PERIPH->C2 = _c2;
 }
 
 // Blocking receive using DMA.
@@ -154,6 +173,9 @@ void Spi::recv(uint8_t *buffer, unsigned size)
 //	// Block until transfer is complete.
 	while(!_dmaRx.isCompleted())
 		;
+
+	// Disable DMA.
+	SPI_PERIPH->C2 = _c2;
 }
 
 

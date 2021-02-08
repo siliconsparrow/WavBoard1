@@ -17,6 +17,32 @@ enum {
 	kSpiSpeedFast = 25000000, // 25MHz for fast cards.
 };
 
+enum {
+	kBlockSize = 512, // SD Card standard block size.
+};
+
+// R1 response status flags.
+#define R1_IDLE_STATE           0x01
+#define R1_ERASE_RESET          0x02
+#define R1_ILLEGAL_COMMAND      0x04
+#define R1_COM_CRC_ERROR        0x08
+#define R1_ERASE_SEQUENCE_ERROR 0x10
+#define R1_ADDRESS_ERROR        0x20
+#define R1_PARAMETER_ERROR      0x40
+
+// Command IDs used by this module.
+#define SDCARD_CMD_GO_IDLE_STATE     0
+#define SDCARD_CMD_SEND_IF_COND      8
+#define SDCARD_CMD_READ_BLOCK       17
+#define SDCARD_CMD_WRITE_BLOCK      24
+#define SDCARD_CMD_SET_BLOCKLEN     16
+#define SDCARD_CMD_APP_CMD          55
+#define SDCARD_CMD_READ_EXTR_MULTI  58
+#define SDCARD_CMD_WRITE_EXTR_MULTI 59
+
+// "Application" commands used by this module.
+#define SDCARD_APPCMD_SD_SEND_OP_COND 41
+
 // Single instance. We assume only the one card.
 static SDCard *g_sdCard = 0;
 
@@ -60,16 +86,14 @@ bool SDCard::init()
 	uint8_t buf[10];
 	_spi.recv(buf, 10);
 
-#ifdef OLD
 	// Start up the card.
 	_cardType = startSequence();
 	if(_cardType == cardtypeNone)
 		return false;
 
 	// Set SPI clock to 18MHz for data transfer.
-	sleepms(100);
-	_spi->setFrequency(kSpiSpeedFast);
-#endif // OLD
+	SystemTick::delayTicks(MS_TO_TICKS(100));
+	_spi.setFrequency(kSpiSpeedFast);
 	return true;
 }
 
@@ -102,8 +126,6 @@ unsigned SDCard::getEraseSectorSize() const
 	return 0;
 }
 
-
-
 // Enable the card's SPI interface.
 void SDCard::select()
 {
@@ -116,122 +138,41 @@ void SDCard::deselect()
 	_csPort.setPin(SDCARD_CS_PIN);
 }
 
-
-
-
-
-#ifdef OLD
-#include "SDCard.h"
-#include "board.h"
-
-SDCard::SDCard()
-	: _csPort(SDCARD_CS_PORT)
+// SD Card first stage initialisation.
+// Returns the card type detected.
+unsigned SDCard::startSequence()
 {
-	_csPort.setPin(SDCARD_CS_PIN, Gpio::OUTPUT);
-	_csPort.set(1 << SDCARD_CS_PIN);
-
-	const uint8_t *data = (const uint8_t *)"HELLO";
-
-	_csPort.clrPin(SDCARD_CS_PIN);
-	_spi.send(data, 5);
-	_csPort.setPin(SDCARD_CS_PIN);
-
-	uint8_t buf[5];
-	_csPort.clrPin(SDCARD_CS_PIN);
-	_spi.recv(buf, 5);
-	_csPort.setPin(SDCARD_CS_PIN);
-}
-
-#endif // OLD
-
-#ifdef OLD
-
-#include "GPIO.h"
-#include "SDCard.h"
-#include "platform.h"
-#include "Timeout.h"
-#include "util.h"
-
-// Define this symbol to use DMA for SPI data transfers.
-#define SD_USE_DMA
-
-// R1 response status flags.
-#define R1_IDLE_STATE           0x01
-#define R1_ERASE_RESET          0x02
-#define R1_ILLEGAL_COMMAND      0x04
-#define R1_COM_CRC_ERROR        0x08
-#define R1_ERASE_SEQUENCE_ERROR 0x10
-#define R1_ADDRESS_ERROR        0x20
-#define R1_PARAMETER_ERROR      0x40
-
-// First byte of each packet has this pattern plus a command ID.
-#define SDCARD_SYNC 0x40
-
-// Command IDs used by this module.
-#define SDCARD_CMD_GO_IDLE_STATE     0
-#define SDCARD_CMD_SEND_IF_COND      8
-#define SDCARD_CMD_READ_BLOCK       17
-#define SDCARD_CMD_WRITE_BLOCK      24
-#define SDCARD_CMD_SET_BLOCKLEN     16
-#define SDCARD_CMD_APP_CMD          55
-#define SDCARD_CMD_READ_EXTR_MULTI  58
-#define SDCARD_CMD_WRITE_EXTR_MULTI 59
-
-// "Application" commands used by this module.
-#define SDCARD_APPCMD_SD_SEND_OP_COND 41
-
-// Maintain a single instance of this class.
-SDCard *SDCard::getInstance()
-{
-	static SDCard sdcardInstance;
-
-	if(sdcardInstance._spi == 0)
-		sdcardInstance.initHW();
-
-	return &sdcardInstance;
-}
-
-// Enable the chip select pin for the SD Card.
-void SDCard::cardSelect()
-{
-	GPIO::CLR(SDCARD_CS_PORT, SDCARD_CS_PINMASK);
-}
-
-// Disable the chip select pin for the SD Card.
-void SDCard::cardDeselect()
-{
-	GPIO::SET(SDCARD_CS_PORT, SDCARD_CS_PINMASK);
-}
-
-// Block if the card is busy
-bool SDCard::waitReady()
-{
-	Timeout t(1000);
-
-	_spi->read();
-	while(!t.isExpired())
-	{
-		if(_spi->read() == 0xFF)
-			return true;
+	// Send CMD0, should enter IDLE STATE.
+	select();
+	if(command(0, 0) != R1_IDLE_STATE) {
+		deselect();
+		return cardtypeNone; // No card detected.
 	}
-	return false;
-}
 
-// Set up the ports required to talk to the SD Card.
-void SDCard::initHW()
-{
-	// Set up chip select pin.
-#if defined(STM32F10X)
-	GPIO::pinInit(SDCARD_CS, GPIO_Mode_Out_PP, GPIO_Speed_2MHz);
-#elif defined(STM32L1XX)
-	GPIO::pinInit(SDCARD_CS, GPIO_Mode_OUT, GPIO_PuPd_NOPULL);
-#endif
+	// Now attempt to identify the card.
 
-	// Make sure card is deactivated.
-	cardDeselect();
+	// Send CMD8 to determine whether it is v1 or v2 interface.
+	if(command(8, 0x1AA) == R1_IDLE_STATE) {
+		// Card has v2 interface.
+		uint8_t ocr[4];
+		_spi.recv(ocr, 4);
 
-	// Set up SPI.
-	_spi = SPI::getPort(JOEY_SPI_PORT_SDCARD);
+		if(ocr[2] == 0x01 && ocr[3] == 0xAA)
+		  	return initCardV2();
+	} else {
+		// Card has v1 interface.
+		unsigned cardtype = initCardV1();
+		if(cardtype != cardtypeNone)
+		{
+			// Set block length to 512 (CMD16)
+			if(command(16, kBlockSize) != 0)
+				return cardtypeNone; // Failed to set block length.
+		}
+		return cardtype;
+	}
+
+	deselect(); // Timeout or error.
+	return cardtypeNone;
 }
 
 // Send a command to the card and receive an R1 response.
@@ -243,26 +184,32 @@ uint8_t SDCard::command(uint8_t cmd, uint32_t arg)
 		return 0xFF; // Card not responding.
 
 	// Send a command.
-	_spi->write(0x40 | cmd);
-	_spi->write(arg >> 24);
-	_spi->write((arg >> 16) & 0xFF);
-	_spi->write((arg >> 8) & 0xFF);
-	_spi->write(arg & 0xFF);
-	if(cmd == 0)
-		_spi->write(0x95);
-	else if(cmd == 8)
-		_spi->write(0x87);
-	else
-		_spi->write(0x01);
+	uint8_t req[8];
+	unsigned p = 0;
+	req[p++] = 0x40 | cmd;
+	req[p++] = arg >> 24;
+	req[p++] = (arg >> 16) & 0xFF;
+	req[p++] = (arg >> 8) & 0xFF;
+	req[p++] = arg & 0xFF;
+	if(cmd == 0) {
+		req[p++] = 0x95;
+	} else if(cmd == 8) {
+		req[p++] = 0x87;
+	} else {
+		req[p++] = 0x01;
+	}
 
-	if(cmd == 12)
-		_spi->read();
+	_spi.send(req, p);
+
+	if(cmd == 12) {
+		_spi.recv();
+	}
 
     // Wait for the repsonse (response[7] == 0).
-	uint8_t response;
+	uint8_t response = 0;
     for(int i = 0; i < 10; i++)
 	{
-        response = _spi->read();
+        response = _spi.recv();
         if(0 == (response & 0x80)) // Check validation bit.
             return response;
     }
@@ -280,6 +227,20 @@ uint8_t SDCard::appCommand(uint8_t cmd, uint32_t arg)
 	return command(cmd, arg);
 }
 
+// Block if the card is busy
+bool SDCard::waitReady()
+{
+	Timeout t(MS_TO_TICKS(1000));
+
+	_spi.recv();
+	while(!t.isExpired())
+	{
+		if(_spi.recv() == 0xFF)
+			return true;
+	}
+	return false;
+}
+
 // Card is an older v1.x SPI interface. Identify the card and return its type.
 unsigned SDCard::initCardV1()
 {
@@ -290,7 +251,7 @@ unsigned SDCard::initCardV1()
 			for(int i = 0; i < 100; i++)
 			{
 				if(appCommand(41, 0) == 0)
-					return SDCARD_SD1; // SDSC card.
+					return cardtypeSDv1; // SDSC card.
 			}
 		}
 		else
@@ -298,13 +259,13 @@ unsigned SDCard::initCardV1()
 			for(int i = 0; i < 100; i++)
 			{
 				if(command(1, 0) == 0)
-					return SDCARD_MMC; // MMC card.
+					return cardtypeMMC; // MMC card.
 			}
 		}
 	}
 
-	cardDeselect();
-	return SDCARD_NONE;
+	deselect();
+	return cardtypeNone;
 }
 
 // Card has v2 interface. Identify the card and return the card type.
@@ -317,67 +278,35 @@ unsigned SDCard::initCardV2()
 		{
 			if(0 != command(58, 0))
 			{
-				cardDeselect();
-				//cout << "CMD58 FAIL\r\n";
-				return SDCARD_NONE;
+				deselect();
+				return cardtypeNone;
 			}
 
 			uint8_t ocr[4];
-			for(int j = 0; j < 4; j++)
-				ocr[j] = _spi->read();
+			_spi.recv(ocr, 4);
 
 			if(0 != (ocr[0] & 0x40))
-				return SDCARD_SD2 | SDCARD_BLOCK;
+				return cardtypeSDv2 | cardtypeBlock;
 
-			return SDCARD_SD2;
+			return cardtypeSDv2;
 		}
 	}
 
-	cardDeselect();
-	return SDCARD_NONE;
+	deselect();
+	return cardtypeNone;
 }
 
-// SD Card first stage initialisation.
-// Returns the card type detected.
-unsigned SDCard::startSequence()
-{
-	// Send CMD0, should enter IDLE STATE.
-	cardSelect();
-	if(command(0, 0) != R1_IDLE_STATE)
-	{
-		cardDeselect();
-		return SDCARD_NONE; // No card detected.
-	}
+#ifdef OLD
 
-	// Now attempt to identify the card.
+#include "platform.h"
+#include "Timeout.h"
+#include "util.h"
 
-	// Send CMD8 to determine whether it is v1 or v2 interface.
-	if(command(8, 0x1AA) == R1_IDLE_STATE)
-	{
-		// Card has v2 interface.
-		uint8_t ocr[4];
-		for(int j = 0; j < 4; j++)
-		   	ocr[j] = _spi->read();
+// Define this symbol to use DMA for SPI data transfers.
+#define SD_USE_DMA
 
-		if(ocr[2] == 0x01 && ocr[3] == 0xAA)
-		  	return initCardV2();
-	}
-	else
-	{
-		// Card has v1 interface.
-		unsigned cardtype = initCardV1();
-		if(cardtype != SDCARD_NONE)
-		{
-			// Set block length to 512 (CMD16)
-			if(command(16, SD_BLOCK_SIZE) != 0)
-				return SDCARD_NONE; // Failed to set block length.
-		}
-		return cardtype;
-	}
-
-	cardDeselect(); // Timeout or error.
-	return SDCARD_NONE;
-}
+// First byte of each packet has this pattern plus a command ID.
+#define SDCARD_SYNC 0x40
 
 
 

@@ -33,19 +33,26 @@ public:
 private:
 	enum CardType
 	{
-		cardtypeNone = 0,
-		cardtypeMMC  = 1,
-		cardtypeSDv1 = 2,
-		cardtypeSDv2 = 4,
-		cardtypeSdc  = 6,
+		cardtypeNone  = 0,
+		cardtypeMMC   = 1,
+		cardtypeSDv1  = 2,
+		cardtypeSDv2  = 4,
+		cardtypeSdc   = 6,
+		cardtypeBlock = 8,
 	};
 
 	Spi      _spi;
 	Gpio     _csPort;
 	unsigned _cardType;
 
-	void select();
-	void deselect();
+	void     select();
+	void     deselect();
+	unsigned startSequence();
+	uint8_t  command(uint8_t cmd, uint32_t arg);
+	uint8_t  appCommand(uint8_t cmd, uint32_t arg);
+	bool     waitReady();
+	unsigned initCardV1();
+	unsigned initCardV2();
 };
 
 #ifdef OLD
@@ -53,26 +60,7 @@ private:
 class SDCard
 {
 public:
-	enum {
-		kBlockSize = 512, // SD Card standard block size.
-	};
-
-
-	SDCard();
-
-private:
-	Spi  _spi;
-	Gpio _csPort;
 };
-#endif // OLD
-
-#ifdef OLD
-
-// Speed tokens for SPI.
-#define SPI_SPEED_DEFAULT     SPI_BaudRatePrescaler_2   // 18MHz default SPI clock speed.
-#define SPI_SPEED_SDCARD_MAX  SPI_BaudRatePrescaler_4   // 9MHz SPI clock speed for SD card.
-#define SPI_SPEED_SDCARD_SLOW SPI_BaudRatePrescaler_256 // 140kHz SPI clock for SD card init stage.
-#define SPI_SPEED_WIZCHIP     SPI_BaudRatePrescaler_2   // 18MHz SPI clock for Ethernet.
 
 struct SpiInitParams
 {
@@ -133,28 +121,12 @@ const struct SpiInitParams SPI1CONF = {
 class SDCard
 {
 public:
-	static SDCard *getInstance();
-	SDCard()
-		: _spi(0)
-		, _cardType(SDCARD_NONE)
-	{ }
 
 	bool readSector(unsigned sector, uint8_t *buffer);
 	bool writeSector(unsigned sector, const uint8_t *buffer);
 
 private:
-	SPI      *_spi;
-
-	void     initHW();
-	void     cardSelect();
-	void     cardDeselect();
-	bool     waitReady();
 	bool     isHighCapacity() const;
-	uint8_t  command(uint8_t cmd, uint32_t arg);
-	uint8_t  appCommand(uint8_t cmd, uint32_t arg);
-	unsigned initCardV1();
-	unsigned initCardV2();
-	unsigned startSequence();
 	bool     isCardOK();
 };
 
