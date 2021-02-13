@@ -216,6 +216,7 @@ private:
 		unsigned startSequence();
 		unsigned initCardV1();
 		unsigned initCardV2();
+		uint32_t crc7(uint8_t *buffer, uint32_t length) const;
 	};
 
 #endif // SDCARD_KINETIS_DRIVER

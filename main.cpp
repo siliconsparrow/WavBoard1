@@ -3,12 +3,8 @@
 
 // Running on a Kinetis MKL17Z32VLH4 at 48MHz with 32k Flash and 8k SRAM
 
-// I need to get rid of all the crap in driver/ and write it from scratch so
-// as to not have a huge image.
-
 // TODO:
 // * DMA SPI not working
-// * WAV file decoder
 // * Granulation or some kind of filter thing
 // * Inputs - GPIO and ADC
 // * Use inputs to modulate playback and filters.

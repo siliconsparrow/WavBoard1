@@ -14,14 +14,13 @@
 #include "AudioSource.h"
 #include "Dma.h"
 
-class AudioKinetisI2S //: public Audio
+class AudioKinetisI2S
 {
 public:
 	static AudioKinetisI2S *instance();
 
 	AudioKinetisI2S();
 
-	//void write(const uint32_t *data, unsigned dataSize);
 	void setDataSource(AudioSource *src);
 
 	void irq();
@@ -30,9 +29,7 @@ private:
 	AudioSource *_dataSource;
 	Dma          _dma;
 
-	//void dmaAbort();
 	void dmaStart();
-	//void dmaStartTransfer(void *srcAddr, void *destAddr, unsigned transferBytes);
 };
 
-#endif /* AUDIOKINETISI2S_H_ */
+#endif // AUDIOKINETISI2S_H_

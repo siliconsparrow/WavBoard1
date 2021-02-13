@@ -98,7 +98,6 @@ void Spi::setFrequency(uint32_t freq)
 	SPI_PERIPH->BR = SPI_BR_SPR(bestDivisor) | SPI_BR_SPPR(bestPrescaler);
 }
 
-#ifdef OLD
 // Send and receive a single byte (blocking).
 uint8_t Spi::xfer(uint8_t b)
 {
@@ -114,6 +113,77 @@ uint8_t Spi::xfer(uint8_t b)
 
 	return SPI_PERIPH->DL;
 }
+
+void Spi::send(const uint8_t *buffer, unsigned size)
+{
+	for(unsigned i = 0; i < size; i++)
+		xfer(buffer[i]);
+
+/*
+	// Wait for port to be ready.
+	while(0 == (SPI_PERIPH->S & SPI_S_SPTEF_MASK))
+		;
+
+	for(unsigned i = 0; i < size; i++) {
+		SPI_PERIPH->DL = buffer[i];
+
+		// Block until transfer complete.
+		while(0 == (SPI_PERIPH->S & SPI_S_SPRF_MASK))
+			;
+	}
+	*/
+}
+
+void Spi::recv(uint8_t *buffer, unsigned size)
+{
+	//for(unsigned i = 0; i < size; i++)
+	//	buffer[i] = xfer(0xff);
+
+	// Wait for port to be ready.
+	while(0 == (SPI_PERIPH->S & SPI_S_SPTEF_MASK))
+		;
+
+	for(unsigned i = 0; i < size; i++) {
+		SPI_PERIPH->DL = 0xFF;
+
+		// Block until transfer complete.
+		while(0 == (SPI_PERIPH->S & SPI_S_SPRF_MASK))
+			;
+
+		buffer[i] = SPI_PERIPH->DL;
+	}
+}
+
+#ifdef OLD
+
+void Spi::exchange(const uint8_t *send, uint8_t *recv, unsigned size)
+{
+	// Wait for port to be ready.
+	while(0 == (SPI_PERIPH->S & SPI_S_SPTEF_MASK))
+		;
+
+	for(unsigned i = 0; i < size; i++) {
+		SPI_PERIPH->DL = send[i];
+		while(0 == (SPI_PERIPH->S & SPI_S_SPRF_MASK))
+			;
+		recv[i] = SPI_PERIPH->DL;
+	}
+
+	/*
+
+	if(size == 1)
+		*recv = exchangeSingle(*send);
+	else
+		exchangeDma(send, recv, size);
+*/
+}
+
+
+#endif // OLD
+
+
+
+#ifdef OLD
 
 // Blocking send using DMA.
 void Spi::send(const uint8_t *buffer, unsigned size)
@@ -153,6 +223,8 @@ void Spi::recv(uint8_t *buffer, unsigned size)
 	SPI_PERIPH->C2 = _c2;
 }
 #endif // OLD
+
+#ifdef OLD
 
 void Spi::exchange(const uint8_t *send, uint8_t *recv, unsigned size)
 {
@@ -208,3 +280,5 @@ void Spi::exchangeDma(const uint8_t *send, uint8_t *recv, unsigned size)
 	// Disable DMA.
 	SPI_PERIPH->C2 = _c2;
 }
+
+#endif // OLD

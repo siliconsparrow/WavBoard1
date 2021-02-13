@@ -120,23 +120,6 @@ AudioKinetisI2S::AudioKinetisI2S()
 	FLEXIO->CTRL |= FLEXIO_CTRL_FLEXEN_MASK | FLEXIO_CTRL_DBGE_MASK;
 }
 
-//// Basic blocking write.
-//// TODO: Make it DMA!
-//void AudioKinetisI2S::write(const uint32_t *data, unsigned dataSize)
-//{
-//	for(unsigned i = 0; i < dataSize; i++)
-//	{
-//		uint32_t value = data[i];
-//
-//		// Wait for shift register to be clear.
-//		while(0 == (FLEXIO->SHIFTSTAT & (1<<I2S_SHIFTER_INDEX)))
-//			;
-//
-//		// Send the whole frame (32 bits).
-//		FLEXIO->SHIFTBUFBIS[I2S_SHIFTER_INDEX] = value;
-//	}
-//}
-
 // Register a data source object that the DMA can pull from.
 // Set to NULL to stop outputting audio.
 void AudioKinetisI2S::setDataSource(AudioSource *src)
@@ -144,48 +127,12 @@ void AudioKinetisI2S::setDataSource(AudioSource *src)
 	_dataSource = src;
 	if(_dataSource == 0)
 	{
-		_dma.abort(); // dmaAbort();
+		_dma.abort();
 		return;
 	}
 
 	dmaStart();
 }
-
-//// Cancel in-progress DMA transfer.
-//void AudioKinetisI2S::dmaAbort()
-//{
-//	FLEXIO_DMA->DMA[FLEXIO_DMA_CHANNEL].DSR_BCR |= DMA_DSR_BCR_DONE_MASK;
-//	FLEXIO_DMA->DMA[FLEXIO_DMA_CHANNEL].DCR = 0;
-//}
-
-//// Load the DMA with new data.
-//void AudioKinetisI2S::dmaStartTransfer(void *srcAddr, void *destAddr, unsigned transferBytes)
-//{
-//	// Reset the DMA channel.
-//    FLEXIO_DMA->DMA[FLEXIO_DMA_CHANNEL].DSR_BCR |= DMA_DSR_BCR_DONE_MASK;
-//
-//    // Set source address
-//    FLEXIO_DMA->DMA[FLEXIO_DMA_CHANNEL].SAR = (uint32_t)srcAddr;
-//
-//    // Set destination address
-//    FLEXIO_DMA->DMA[FLEXIO_DMA_CHANNEL].DAR = (uint32_t )destAddr;
-//
-//    // Set transfer byte count
-//    FLEXIO_DMA->DMA[FLEXIO_DMA_CHANNEL].DSR_BCR = DMA_DSR_BCR_BCR(transferBytes);
-//
-//    // Set DMA Control Register
-//    FLEXIO_DMA->DMA[FLEXIO_DMA_CHANNEL].DCR = DMA_DCR_CS_MASK // Enable cycle-stealing (DMA transfer during unused clock cycles)
-//		| DMA_DCR_EINT_MASK    // Generate interrupt on transfer complete
-//		| DMA_DCR_D_REQ_MASK
-//		| DMA_DCR_SINC_MASK;   // Auto-increment source address
-//    	// (If no source or destination word-size is given, it will default to 32-bits).
-//
-//    // Enable the interrupt handler.
-//    NVIC_EnableIRQ(FLEXIO_DMA_IRQN);
-//
-//    // Start shoveling bytes.
-//    FLEXIO_DMA->DMA[FLEXIO_DMA_CHANNEL].DCR |= DMA_DCR_ERQ_MASK; // | DMA_DCR_START_MASK;
-//}
 
 // Start a new DMA transfer.
 void AudioKinetisI2S::dmaStart()
@@ -195,7 +142,7 @@ void AudioKinetisI2S::dmaStart()
 
 	if(data == 0)
 	{
-		_dma.abort(); //dmaAbort();
+		_dma.abort();
 		return; // End of audio.
 	}
 
@@ -205,7 +152,6 @@ void AudioKinetisI2S::dmaStart()
 
     // Start DMA transfer.
     _dma.startTransfer(data, (void *)&FLEXIO->SHIFTBUFBIS[I2S_SHIFTER_INDEX], xferSize, AUDIO_DMA_FLAGS);
-	//dmaStartTransfer(data, (void *)&FLEXIO->SHIFTBUFBIS[I2S_SHIFTER_INDEX], xferSize);
 	FLEXIO->CTRL |= FLEXIO_CTRL_FLEXEN_MASK;
 }
 
@@ -224,7 +170,6 @@ void AudioKinetisI2S::irq()
 	}
 
 	_dma.startTransfer(data, (void *)&FLEXIO->SHIFTBUFBIS[I2S_SHIFTER_INDEX], xferSize, AUDIO_DMA_FLAGS);
-	//dmaStartTransfer(data, (void *)&FLEXIO->SHIFTBUFBIS[I2S_SHIFTER_INDEX], xferSize);
 }
 
 // Called when DMA transfer is complete. Calls the audio object which will then
@@ -233,24 +178,3 @@ extern "C" void DMA0_IRQHandler()
 {
 	g_audio->irq();
 }
-
-/*
-status_t FLEXIO_I2S_TransferGetSendCountDMA(FLEXIO_I2S_Type *base, flexio_i2s_dma_handle_t *handle, size_t *count)
-{
-    assert(handle);
-
-    status_t status = kStatus_Success;
-
-    if (handle->state != kFLEXIO_I2S_Busy)
-    {
-        status = kStatus_NoTransferInProgress;
-    }
-    else
-    {
-        *count = handle->transferSize[handle->queueDriver] -
-                 DMA_GetRemainingBytes(handle->dmaHandle->base, handle->dmaHandle->channel);
-    }
-
-    return status;
-}
-*/

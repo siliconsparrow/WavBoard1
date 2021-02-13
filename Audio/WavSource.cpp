@@ -57,6 +57,8 @@ const AUDIOSAMPLE *WavSource::getBuffer(unsigned *oSize)
 						r = _wav.readBlock((uint8_t *)&buf[*oSize], sizeof(buf) - *oSize);
 						if(r <= 0)
 							break;
+
+						*oSize += r;
 					}
 				}
 			}
@@ -64,7 +66,20 @@ const AUDIOSAMPLE *WavSource::getBuffer(unsigned *oSize)
 	}
 
 	// Run out of data or not playing. Fill remains of buffer with silence.
-	memset(&buf[*oSize], 0x80, AudioSource::kFrameSize * sizeof(AUDIOSAMPLE) - *oSize);
+	memset(&buf[*oSize], 0, AudioSource::kFrameSize * sizeof(AUDIOSAMPLE) - *oSize);
 	*oSize = sizeof(buf);
+
+	// Convert to unsigned data.
+	convert16((uint16_t *)buf, AudioSource::kFrameSize * 2);
+
+	// TODO: Different conversions for 8-bit or mono or different sample rates.
+
 	return buf;
+}
+
+// Convert 16-bit samples from signed (as used by WAV files) to unsigned (as used by I2S).
+void WavSource::convert16(uint16_t *data, unsigned count)
+{
+	for(unsigned i = 0; i < count; i++)
+		*data += 0x8000;
 }

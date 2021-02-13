@@ -31,6 +31,8 @@ private:
 	WavFile _wav;
 	bool    _loop;
 	bool    _isPlaying;
+
+	void convert16(uint16_t *data, unsigned count);
 };
 
 #endif /* AUDIO_WAVSOURCE_H_ */
