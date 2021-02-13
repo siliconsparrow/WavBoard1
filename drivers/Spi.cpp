@@ -116,10 +116,6 @@ uint8_t Spi::xfer(uint8_t b)
 
 void Spi::send(const uint8_t *buffer, unsigned size)
 {
-	for(unsigned i = 0; i < size; i++)
-		xfer(buffer[i]);
-
-/*
 	// Wait for port to be ready.
 	while(0 == (SPI_PERIPH->S & SPI_S_SPTEF_MASK))
 		;
@@ -130,14 +126,18 @@ void Spi::send(const uint8_t *buffer, unsigned size)
 		// Block until transfer complete.
 		while(0 == (SPI_PERIPH->S & SPI_S_SPRF_MASK))
 			;
+
+		(void)SPI_PERIPH->DL;
 	}
-	*/
 }
 
 void Spi::recv(uint8_t *buffer, unsigned size)
 {
-	//for(unsigned i = 0; i < size; i++)
-	//	buffer[i] = xfer(0xff);
+	// Use DMA for larger transfers.
+	if(size >= 16) {
+		recvDma(buffer, size);
+		return;
+	}
 
 	// Wait for port to be ready.
 	while(0 == (SPI_PERIPH->S & SPI_S_SPTEF_MASK))
@@ -154,33 +154,26 @@ void Spi::recv(uint8_t *buffer, unsigned size)
 	}
 }
 
-#ifdef OLD
-
-void Spi::exchange(const uint8_t *send, uint8_t *recv, unsigned size)
+void Spi::recvDma(uint8_t *buffer, unsigned size)
 {
-	// Wait for port to be ready.
-	while(0 == (SPI_PERIPH->S & SPI_S_SPTEF_MASK))
+	_dmaTx.abort();
+	_dmaRx.abort();
+
+	// Set up DMA transfer. For SPI you need to send dummy data to generate clock.
+	uint8_t dummy = 0xFF;
+	_dmaTx.startTransfer((void *)&dummy, (void *)&SPI_PERIPH->DL, size, DMA_SRC_8BIT | DMA_DST_8BIT);
+	_dmaRx.startTransfer((void *)&SPI_PERIPH->DL, (void *)buffer, size, DMA_PERIPH_TO_MEM | DMA_SRC_8BIT | DMA_DST_8BIT);
+
+	// Put SPI into DMA Transmit/Receive mode.
+	SPI_PERIPH->C2 = _c2 | SPI_C2_RXDMAE_MASK | SPI_C2_TXDMAE_MASK;
+
+//	// Block until transfer is complete.
+	while(!_dmaRx.isCompleted())
 		;
 
-	for(unsigned i = 0; i < size; i++) {
-		SPI_PERIPH->DL = send[i];
-		while(0 == (SPI_PERIPH->S & SPI_S_SPRF_MASK))
-			;
-		recv[i] = SPI_PERIPH->DL;
-	}
-
-	/*
-
-	if(size == 1)
-		*recv = exchangeSingle(*send);
-	else
-		exchangeDma(send, recv, size);
-*/
+	// Disable DMA.
+	SPI_PERIPH->C2 = _c2;
 }
-
-
-#endif // OLD
-
 
 
 #ifdef OLD

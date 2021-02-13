@@ -23,9 +23,9 @@ public:
 	inline void set(unsigned mask)    { _gpio->PSOR = mask; }
 	inline void clr(unsigned mask)    { _gpio->PCOR = mask; }
 	inline void toggle(unsigned mask) { _gpio->PTOR = mask; }
-	inline void setPin(unsigned pin)    { _gpio->PSOR = 1 << pin; }
-	inline void clrPin(unsigned pin)    { _gpio->PCOR = 1 << pin; }
-	inline void togglePin(unsigned pin) { _gpio->PTOR = 1 << pin; }
+	inline void setPin(unsigned pin)    { _gpio->PSOR = (1 << pin); }
+	inline void clrPin(unsigned pin)    { _gpio->PCOR = (1 << pin); }
+	inline void togglePin(unsigned pin) { _gpio->PTOR = (1 << pin); }
 
 private:
 	GPIO_Type *_gpio;

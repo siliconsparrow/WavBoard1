@@ -12,7 +12,6 @@
 
 #include "board.h"
 #include "SystemIntegration.h"
-#include "Gpio.h"
 #include "AudioKinetisI2S.h"
 #include "AudioSource.h"
 #include "Filesystem.h"
@@ -20,10 +19,6 @@
 #include "SineSource.h"
 #include "WavSource.h"
 #include <stdint.h>
-
-// Blinkenlight.
-#define TEST_LED_PORT Gpio::portE
-#define TEST_LED_PIN  0
 
 void delay(void)
 {
@@ -49,10 +44,6 @@ int main(void)
 	// System tick is a useful timer.
 	SystemTick::init();
 
-	// Set up the LED for testing.
-	Gpio ledPort(TEST_LED_PORT);
-	ledPort.setPinMode(TEST_LED_PIN, Gpio::OUTPUT);
-
 	// Init the SD card and mount the filesystem.
 	Filesystem fs;
 
@@ -71,10 +62,5 @@ int main(void)
 
 	while(1)
     {
-    	delay();
-
-    	//audio.write(sinedata, SYNTH_SINE_SAMPLES);
-
-    	ledPort.toggle(1 << TEST_LED_PIN);
     }
 }

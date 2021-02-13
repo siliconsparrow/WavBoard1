@@ -6,8 +6,24 @@
  */
 
 #include "Filesystem.h"
+#include "Gpio.h"
 #include "board.h"
 #include <string.h>
+
+// Drive light.
+#define DISK_LED_PORT Gpio::portE
+#define DISK_LED_PIN  0
+
+class DriveLight
+{
+public:
+	DriveLight()  { _driveLed.setPin(DISK_LED_PIN); }
+	~DriveLight() { _driveLed.clrPin(DISK_LED_PIN); }
+
+private:
+	static Gpio _driveLed;
+};
+Gpio DriveLight::_driveLed(DISK_LED_PORT);
 
 File::File()
 {
@@ -21,6 +37,7 @@ File::~File()
 
 bool File::open(const TCHAR *filename, FileMode mode)
 {
+	DriveLight led;
 	return FR_OK == f_open(&_f, filename, (BYTE)mode);
 }
 
@@ -43,6 +60,8 @@ unsigned File::size() const
 int File::read(uint8_t *buf, int nBytes)
 {
 	UINT bytesRead;
+
+	DriveLight led;
 
 	if(FR_OK != f_read(&_f, buf, nBytes, &bytesRead))
 		return -1;
@@ -129,6 +148,12 @@ bool File::seek(int offset, SeekMode mode)
 
 Filesystem::Filesystem()
 {
+	// Set up the LED for testing.
+	Gpio ledPort(DISK_LED_PORT);
+	ledPort.setPinMode(DISK_LED_PIN, Gpio::OUTPUT);
+	//g_driveLed = &
+
+	DriveLight led;
 	f_mount(&_fs, "0", 1);
 }
 

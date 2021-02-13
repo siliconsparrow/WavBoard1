@@ -70,7 +70,7 @@ const AUDIOSAMPLE *WavSource::getBuffer(unsigned *oSize)
 	*oSize = sizeof(buf);
 
 	// Convert to unsigned data.
-	convert16((uint16_t *)buf, AudioSource::kFrameSize * 2);
+	//convert16((uint16_t *)buf, AudioSource::kFrameSize * 2);
 
 	// TODO: Different conversions for 8-bit or mono or different sample rates.
 

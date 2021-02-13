@@ -31,16 +31,13 @@ public:
 	void send(const uint8_t *buffer, unsigned size);
 	void recv(uint8_t *buffer, unsigned size);
 
-	//void exchange(const uint8_t *send, uint8_t *recv, unsigned size);
-
 private:
 	Dma      _dmaTx;
 	Dma      _dmaRx;
 	uint32_t _c2;
 
 	uint8_t xfer(uint8_t b);
-//	uint8_t exchangeSingle(uint8_t send);
-//	void exchangeDma(const uint8_t *send, uint8_t *recv, unsigned size);
+	void    recvDma(uint8_t *buffer, unsigned size);
 };
 
 #endif // SPI_H_
