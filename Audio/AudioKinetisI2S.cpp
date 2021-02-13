@@ -35,6 +35,7 @@ AudioKinetisI2S *g_audio = 0;
 AudioKinetisI2S::AudioKinetisI2S()
 	: _dataSource(0)
 	, _dma(FLEXIO_DMA_CHANNEL, Dma::muxFlexIOch0)
+	, _currentBuf(_buf1)
 {
 	// Enable FLEXIO peripheral.
 	SystemIntegration::enableClock(SystemIntegration::kCLOCK_Flexio0);
@@ -137,22 +138,29 @@ void AudioKinetisI2S::setDataSource(AudioSource *src)
 // Start a new DMA transfer.
 void AudioKinetisI2S::dmaStart()
 {
-	unsigned xferSize;
-	uint32_t *data = (uint32_t *)_dataSource->getBuffer(&xferSize);
+	//unsigned xferSize;
+	//uint32_t *data = (uint32_t *)_dataSource->getBuffer(&xferSize);
 
-	if(data == 0)
-	{
-		_dma.abort();
-		return; // End of audio.
-	}
+	//if(data == 0)
+	//{
+	//	_dma.abort();
+	//	return; // End of audio.
+	//}
+
+    // Generate the first frame.
+	_dataSource->fillBuffer(_buf1);
 
     // Set DMA enable bit for I2S.
 	FLEXIO->CTRL &= ~FLEXIO_CTRL_FLEXEN_MASK;
     FLEXIO->SHIFTSDEN |= (1 << I2S_SHIFTER_INDEX);
 
     // Start DMA transfer.
-    _dma.startTransfer(data, (void *)&FLEXIO->SHIFTBUFBIS[I2S_SHIFTER_INDEX], xferSize, AUDIO_DMA_FLAGS);
+    _dma.startTransfer(_buf1, (void *)&FLEXIO->SHIFTBUFBIS[I2S_SHIFTER_INDEX], sizeof(_buf1), AUDIO_DMA_FLAGS);
 	FLEXIO->CTRL |= FLEXIO_CTRL_FLEXEN_MASK;
+
+	// Start double-buffering.
+	_currentBuf = _buf2;
+	_dataSource->fillBuffer(_currentBuf);
 }
 
 // Called when DMA transfer is complete. Loads the next buffer and starts a new DMA transfer.
@@ -161,15 +169,27 @@ void AudioKinetisI2S::irq()
 	// Clear the interrupt flag.
 	//FLEXIO_DMA->DMA[FLEXIO_DMA_CHANNEL].DSR_BCR |= DMA_DSR_BCR_DONE_MASK;
 
-	unsigned xferSize;
-	uint32_t *data = (uint32_t *)_dataSource->getBuffer(&xferSize);
-	if(data == 0)
-	{
-		_dma.abort(); //dmaAbort();
-		return;
-	}
+	// Hopefully the buffer is full, send it.
+	_dma.startTransfer(_currentBuf, (void *)&FLEXIO->SHIFTBUFBIS[I2S_SHIFTER_INDEX], sizeof(_buf1), AUDIO_DMA_FLAGS);
 
-	_dma.startTransfer(data, (void *)&FLEXIO->SHIFTBUFBIS[I2S_SHIFTER_INDEX], xferSize, AUDIO_DMA_FLAGS);
+	// Swap buffers.
+	if(_currentBuf == _buf1)
+		_currentBuf = _buf2;
+	else
+		_currentBuf = _buf1;
+
+	// Start processing the next frame.
+	_dataSource->fillBuffer(_currentBuf);
+
+	//unsigned xferSize;
+	//uint32_t *data = (uint32_t *)_dataSource->getBuffer(&xferSize);
+	//if(data == 0)
+	//{
+	//	_dma.abort(); //dmaAbort();
+	//	return;
+	//}
+	//
+	//_dma.startTransfer(data, (void *)&FLEXIO->SHIFTBUFBIS[I2S_SHIFTER_INDEX], xferSize, AUDIO_DMA_FLAGS);
 }
 
 // Called when DMA transfer is complete. Calls the audio object which will then

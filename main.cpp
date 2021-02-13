@@ -60,7 +60,10 @@ int main(void)
 
 	wav.play(true);
 
+	unsigned counter = 0;
+
 	while(1)
     {
+		counter++;
     }
 }

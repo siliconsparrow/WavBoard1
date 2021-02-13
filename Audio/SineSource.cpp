@@ -8,7 +8,6 @@
 #include "SineSource.h"
 
 // Pre-calculated sine wave.
-#define SYNTH_SINE_SAMPLES 32
 static const uint16_t SYNTH_SINE[] =
 {
 	0x8000,
@@ -45,16 +44,17 @@ static const uint16_t SYNTH_SINE[] =
 	0x6707
 };
 
-uint32_t g_sinedata[SYNTH_SINE_SAMPLES];
+
 
 SineSource::SineSource()
+	: _pos(0)
 {
 	// Create stereo sine wave from mono data.
-	for(int i = 0; i < SYNTH_SINE_SAMPLES; i++)
+	for(int i = 0; i < kSineSamples; i++)
 	{
 		uint16_t val = SYNTH_SINE[i] / 8; // Lower the volume.
 		val += 0x2000;
-		g_sinedata[i] = ((uint32_t)val << 16) | (uint32_t)val;
+		_sinedata[i] = ((uint32_t)val << 16) | (uint32_t)val;
 	}
 }
 
@@ -62,8 +62,17 @@ SineSource::~SineSource()
 {
 }
 
-const AUDIOSAMPLE *SineSource::getBuffer(unsigned *oSize)
+void SineSource::fillBuffer(AUDIOSAMPLE *buffer)
 {
-	*oSize = SYNTH_SINE_SAMPLES * sizeof(AUDIOSAMPLE);
-	return g_sinedata;
+	for(unsigned i = 0; i < AudioSource::kFrameSize; i++) {
+		buffer[i] = _sinedata[_pos++];
+		if(_pos >= kSineSamples)
+			_pos = 0;
+	}
 }
+
+//const AUDIOSAMPLE *SineSource::getBuffer(unsigned *oSize)
+//{
+//	*oSize = SYNTH_SINE_SAMPLES * sizeof(AUDIOSAMPLE);
+//	return g_sinedata;
+//}

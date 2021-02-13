@@ -16,13 +16,14 @@ class AudioSource
 {
 public:
 	enum {
-		kFrameSize = 256, // Recommended frame size (number of samples).
+		kFrameSize = 256,                               // Frame size in number of samples.
+		kFrameBytes = kFrameSize * sizeof(AUDIOSAMPLE), // Number of bytes in a frame.
 	};
 
 	AudioSource() { }
 	virtual ~AudioSource() { }
 
-	virtual const AUDIOSAMPLE *getBuffer(unsigned *oSize) = 0;
+	virtual void fillBuffer(AUDIOSAMPLE *buffer) = 0;
 };
 
 #endif // AUDIOSOURCE_H_

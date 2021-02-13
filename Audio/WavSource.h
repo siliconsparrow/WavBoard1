@@ -24,8 +24,7 @@ public:
 	void play(bool loop = false);
 	void stop();
 
-protected:
-	virtual const AUDIOSAMPLE *getBuffer(unsigned *oSize);
+	virtual void fillBuffer(AUDIOSAMPLE *buffer);
 
 private:
 	WavFile _wav;

@@ -28,6 +28,9 @@ public:
 private:
 	AudioSource *_dataSource;
 	Dma          _dma;
+	AUDIOSAMPLE *_currentBuf;
+	AUDIOSAMPLE  _buf1[AudioSource::kFrameSize];
+	AUDIOSAMPLE  _buf2[AudioSource::kFrameSize];
 
 	void dmaStart();
 };

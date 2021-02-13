@@ -17,7 +17,14 @@ public:
 	SineSource();
 	virtual ~SineSource();
 
-	virtual const AUDIOSAMPLE *getBuffer(unsigned *oSize);
+	virtual void fillBuffer(AUDIOSAMPLE *buffer);
+
+private:
+	enum {
+		kSineSamples = 32
+	};
+	unsigned _pos;
+	uint32_t _sinedata[kSineSamples];
 };
 
 #endif // AUDIO_SINESOURCE_H_
