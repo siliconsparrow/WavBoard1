@@ -13,7 +13,8 @@ TARGET = WAVBoard
 VPATH = . \
 	:platform \
 	:drivers \
-	:Filesystem
+	:Filesystem \
+	:Audio
 	
 # List of all source files to compile.
 SOURCES = \
@@ -25,12 +26,14 @@ SOURCES = \
 	SystemTick.cpp \
 	Dma.cpp \
 	Spi.cpp \
-	AudioSource.cpp \
 	AudioKinetisI2S.cpp \
+	SineSource.cpp \
 	SDCard.cpp \
 	diskio.cpp \
 	ff.c \
 	Filesystem.cpp \
+	WavFile.cpp \
+	WavSource.cpp \
 	main.cpp
 
 # Defines.
@@ -42,6 +45,7 @@ INCLUDES = -I. \
 	-Iplatform/CMSIS \
 	-IFilesystem \
 	-Idrivers \
+	-IAudio
 
 # Output directories
 DEBUGPATH = Debug

@@ -7,8 +7,7 @@
 // as to not have a huge image.
 
 // TODO:
-// * SD card driver
-// * Fat32 filesystem (only needs to be read-only)
+// * DMA SPI not working
 // * WAV file decoder
 // * Granulation or some kind of filter thing
 // * Inputs - GPIO and ADC
@@ -22,6 +21,8 @@
 #include "AudioSource.h"
 #include "Filesystem.h"
 #include "SystemTick.h"
+#include "SineSource.h"
+#include "WavSource.h"
 #include <stdint.h>
 
 // Blinkenlight.
@@ -44,31 +45,6 @@ void clockSetup()
 	MCG->C1 = 0x00; // Switch to high-frequency (48MHz) clock.
 }
 
-//// TEST OF THE DMA SPI.
-//void SpiTest()
-//{
-//	Spi spi;
-//
-////	uint8_t buf[10];
-////	spi.recv(buf, 10);
-//
-//	Gpio csPort(SDCARD_CS_PORT);
-//	csPort.setPinMode(SDCARD_CS_PIN, Gpio::OUTPUT);
-//	csPort.set(1 << SDCARD_CS_PIN);
-//
-//
-//	const uint8_t *data = (const uint8_t *)"HELLO";
-//
-//	csPort.clrPin(SDCARD_CS_PIN);
-//	spi.send(data, 5);
-//	csPort.setPin(SDCARD_CS_PIN);
-//
-//	uint8_t buf[8];
-//	csPort.clrPin(SDCARD_CS_PIN);
-//	spi.recv(buf, 8);
-//	csPort.setPin(SDCARD_CS_PIN);
-//}
-
 int main(void)
 {
 	// Core init - make sure we are running at max clock speed.
@@ -81,21 +57,21 @@ int main(void)
 	Gpio ledPort(TEST_LED_PORT);
 	ledPort.setPinMode(TEST_LED_PIN, Gpio::OUTPUT);
 
-	//SpiTest();
-
-	// Init the SD card.
+	// Init the SD card and mount the filesystem.
 	Filesystem fs;
 
 	// Set up I2S DAC to produce audio.
 	AudioKinetisI2S audio;
 
 	// Create audio source object and link it to the audio output.
-	AudioSource src;
-	audio.setDataSource(&src);
+	SineSource sine;
+	WavSource wav;
+	if(wav.open("/LOOP001.WAV"))
+		audio.setDataSource(&wav);
+	else
+		audio.setDataSource(&sine);
 
-	// TEST open file.
-	File fTest;
-	fTest.open("LOOP001.WAV");
+	wav.play(true);
 
 	while(1)
     {

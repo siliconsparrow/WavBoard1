@@ -1,15 +1,15 @@
 /*
- * AudioSource.cpp
+ * SineSource.cpp
  *
- *  Created on: 13Jan.,2018
+ *  Created on: 13 Feb 2021
  *      Author: adam
  */
 
-#include "AudioSource.h"
+#include "SineSource.h"
 
 // Pre-calculated sine wave.
 #define SYNTH_SINE_SAMPLES 32
-const uint16_t SYNTH_SINE[] =
+static const uint16_t SYNTH_SINE[] =
 {
 	0x8000,
 	0x98F8,
@@ -47,18 +47,22 @@ const uint16_t SYNTH_SINE[] =
 
 uint32_t g_sinedata[SYNTH_SINE_SAMPLES];
 
-AudioSource::AudioSource()
+SineSource::SineSource()
 {
 	// Create stereo sine wave from mono data.
 	for(int i = 0; i < SYNTH_SINE_SAMPLES; i++)
 	{
-		uint16_t val = SYNTH_SINE[i] / 8;
+		uint16_t val = SYNTH_SINE[i] / 8; // Lower the volume.
 		val += 0x2000;
 		g_sinedata[i] = ((uint32_t)val << 16) | (uint32_t)val;
 	}
 }
 
-const AUDIOSAMPLE *AudioSource::getBuffer(unsigned *oSize)
+SineSource::~SineSource()
+{
+}
+
+const AUDIOSAMPLE *SineSource::getBuffer(unsigned *oSize)
 {
 	*oSize = SYNTH_SINE_SAMPLES * sizeof(AUDIOSAMPLE);
 	return g_sinedata;
