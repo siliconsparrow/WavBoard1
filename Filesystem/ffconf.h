@@ -1,6 +1,8 @@
 #ifndef _FFCONF_H_
 #define _FFCONF_H_
 
+#include "board.h"
+
 /*---------------------------------------------------------------------------/
 /  FatFs - FAT file system module configuration file
 /---------------------------------------------------------------------------*/
@@ -16,7 +18,12 @@
 / Function Configurations
 /---------------------------------------------------------------------------*/
 
+#ifdef SDCARD_READONLY
 #define _FS_READONLY	1
+#else
+#define _FS_READONLY	0
+#endif
+
 /* This option switches read-only configuration. (0:Read/Write or 1:Read-only)
 /  Read-only configuration removes writing API functions, f_write(), f_sync(),
 /  f_unlink(), f_mkdir(), f_chmod(), f_rename(), f_truncate(), f_getfree()

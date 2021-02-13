@@ -19,13 +19,41 @@ DSTATUS disk_initialize(BYTE pdrv)
 // Read Sector(s)
 DRESULT disk_read(BYTE pdrv, BYTE *buff, DWORD sector, UINT nSectors)
 {
-	return SDCard::instance()->readBlocks(buff, sector, nSectors) ? RES_OK : RES_PARERR;
+	SDCard *sd = SDCard::instance();
+
+	if(sd->readBlocks(buff, sector, nSectors))
+		return RES_OK;
+	else
+		return RES_PARERR;
+	/*
+	for(UINT i = 0; i < nSectors; i++) {
+		if(!sd->readSector(sector, buff))
+			return RES_PARERR;
+
+		sector++;
+		buff += sd->getBlockSize();
+	}
+
+	return RES_OK;*/
 }
 
 // Write Sector(s)
 DRESULT disk_write(BYTE pdrv, const BYTE *buff, DWORD sector, UINT nSectors)
 {
-	return SDCard::instance()->writeBlocks(buff, sector, nSectors) ? RES_OK : RES_PARERR;
+#ifndef SDCARD_READONLY
+	SDCard *sd = SDCard::instance();
+
+	for(UINT i = 0; i < nSectors; i++) {
+		if(!sd->writeSector(sector, buff))
+			return RES_PARERR;
+
+		sector++;
+		buff += sd->getBlockSize();
+	}
+	return RES_OK;
+#else
+	return RES_PARERR;
+#endif
 }
 
 DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void *buffer)

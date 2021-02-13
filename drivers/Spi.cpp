@@ -5,8 +5,6 @@
  *      Author: adam
  */
 
-// This is a cut-down version of the official driver.
-
 #include "Spi.h"
 #include "SystemIntegration.h"
 #include "board.h"
@@ -100,6 +98,7 @@ void Spi::setFrequency(uint32_t freq)
 	SPI_PERIPH->BR = SPI_BR_SPR(bestDivisor) | SPI_BR_SPPR(bestPrescaler);
 }
 
+#ifdef OLD
 // Send and receive a single byte (blocking).
 uint8_t Spi::xfer(uint8_t b)
 {
@@ -139,36 +138,12 @@ void Spi::recv(uint8_t *buffer, unsigned size)
 {
 	// Set up DMA transfer. For SPI you need to send dummy data to generate clock.
 	//	_dma.abort();
-	uint8_t dummy = 0xFF;
+	uint8_t dummy = 0;
 	_dmaTx.startTransfer((void *)&dummy, (void *)&SPI_PERIPH->DL, size, DMA_SRC_8BIT | DMA_DST_8BIT);
 	_dmaRx.startTransfer((void *)&SPI_PERIPH->DL, (void *)buffer, size, DMA_PERIPH_TO_MEM | DMA_SRC_8BIT | DMA_DST_8BIT);
 
-//	// Reset the DMA channel.
-//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DSR_BCR |= DMA_DSR_BCR_DONE_MASK;
-//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DCR = 0;
-//
-//	// Set source address
-//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].SAR = (uint32_t)&SPI_PERIPH->DL;
-//
-//	// Set destination address
-//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DAR = (uint32_t)buffer;
-//
-//	// Set transfer byte count
-//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DSR_BCR = DMA_DSR_BCR_BCR(size);
-//
-//	// Set DMA Control Register
-//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DCR = DMA_INC_DST | DMA_SRC_8BIT | DMA_DST_8BIT | DMA_DCR_D_REQ_MASK | DMA_DCR_CS_MASK | DMA_DCR_ERQ_MASK;
-//
-//	// Start shoveling bytes.
-//	//FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DCR |= DMA_DCR_START_MASK; // DMA_DCR_ERQ_MASK;
-//
-
 	// Put SPI into DMA Transmit/Receive mode.
 	SPI_PERIPH->C2 = _c2 | SPI_C2_RXDMAE_MASK | SPI_C2_TXDMAE_MASK;
-	//SPI_PERIPH->DL = 0xFF;
-
-	// TEST - try a manual start.
-//	FLEXIO_DMA->DMA[SPI_DMA_CHANNEL].DCR |= DMA_DCR_START_MASK;
 
 //	// Block until transfer is complete.
 	while(!_dmaRx.isCompleted())
@@ -177,119 +152,59 @@ void Spi::recv(uint8_t *buffer, unsigned size)
 	// Disable DMA.
 	SPI_PERIPH->C2 = _c2;
 }
+#endif // OLD
 
+void Spi::exchange(const uint8_t *send, uint8_t *recv, unsigned size)
+{
+	// Wait for port to be ready.
+	while(0 == (SPI_PERIPH->S & SPI_S_SPTEF_MASK))
+		;
 
+	for(unsigned i = 0; i < size; i++) {
+		SPI_PERIPH->DL = send[i];
+		while(0 == (SPI_PERIPH->S & SPI_S_SPRF_MASK))
+			;
+		recv[i] = SPI_PERIPH->DL;
+	}
 
-#ifdef EXAMPLE
-    spi_slave_config_t slaveConfig = {0};
-    spi_transfer_t xfer = {0};
-    uint32_t i = 0U;
-    uint32_t err = 0U;
+	/*
 
-    /* Init source buffer */
-    for (i = 0U; i < BUFFER_SIZE; i++)
-    {
-        srcBuff[i] = i;
-    }
+	if(size == 1)
+		*recv = exchangeSingle(*send);
+	else
+		exchangeDma(send, recv, size);
+*/
+}
 
-    /* SPI slave transfer */
-    xfer.rxData = destBuff;
-    xfer.dataSize = BUFFER_SIZE;
-    xfer.txData = NULL;
-    SPI_SlaveTransferNonBlocking(EXAMPLE_SPI_SLAVE, &slaveHandle, &xfer);
+uint8_t Spi::exchangeSingle(uint8_t send)
+{
+	// Wait for port to be ready.
+	while(0 == (SPI_PERIPH->S & SPI_S_SPTEF_MASK))
+		;
 
-    /* SPI master start transfer */
-    xfer.txData = srcBuff;
-    xfer.rxData = NULL;
-    xfer.dataSize = BUFFER_SIZE;
-    SPI_MasterTransferBlocking(SPI0, &xfer);
+	SPI_PERIPH->DL = send;
 
-    while (slaveFinished != true)
-    {
-    }
+	// Block until transfer complete.
+	while(0 == (SPI_PERIPH->S & SPI_S_SPRF_MASK))
+		;
 
-    /* Check the data received */
-    for (i = 0U; i < BUFFER_SIZE; i++)
-    {
-        if (destBuff[i] != srcBuff[i])
-        {
-            PRINTF("\r\nThe %d data is wrong, the data received is %d \r\n", i, destBuff[i]);
-            err++;
-        }
-    }
-    if (err == 0U)
-    {
-        PRINTF("\r\nSPI transfer finished!\r\n");
-    }
+	return SPI_PERIPH->DL;
+}
 
-    while (1)
-    {
-    }
+void Spi::exchangeDma(const uint8_t *send, uint8_t *recv, unsigned size)
+{
+	// Set up DMA transfer. For SPI you need to send dummy data to generate clock.
+	//	_dma.abort();
+	_dmaTx.startTransfer((void *)send, (void *)&SPI_PERIPH->DL, size, DMA_MEM_TO_PERIPH | DMA_SRC_8BIT | DMA_DST_8BIT);
+	_dmaRx.startTransfer((void *)&SPI_PERIPH->DL, (void *)recv, size, DMA_PERIPH_TO_MEM | DMA_SRC_8BIT | DMA_DST_8BIT);
 
+	// Put SPI into DMA Transmit/Receive mode.
+	SPI_PERIPH->C2 = _c2 | SPI_C2_RXDMAE_MASK | SPI_C2_TXDMAE_MASK;
 
+	// Block until transfer is complete.
+	while(!_dmaRx.isCompleted())
+		;
 
-
-    status_t SPI_MasterTransferBlocking(SPI_Type *base, spi_transfer_t *xfer)
-    {
-        assert(xfer);
-
-        uint8_t bytesPerFrame = 1U;
-
-        /* Check if the argument is legal */
-        if ((xfer->txData == NULL) && (xfer->rxData == NULL))
-        {
-            return kStatus_InvalidArgument;
-        }
-
-    #if defined(FSL_FEATURE_SPI_16BIT_TRANSFERS) && FSL_FEATURE_SPI_16BIT_TRANSFERS
-        /* Check if 16 bits or 8 bits */
-        bytesPerFrame = ((base->C2 & SPI_C2_SPIMODE_MASK) >> SPI_C2_SPIMODE_SHIFT) + 1U;
-    #endif
-
-        /* Disable SPI and then enable it, this is used to clear S register */
-        base->C1 &= ~SPI_C1_SPE_MASK;
-        base->C1 |= SPI_C1_SPE_MASK;
-
-    #if defined(FSL_FEATURE_SPI_HAS_FIFO) && FSL_FEATURE_SPI_HAS_FIFO
-
-        /* Disable FIFO, as the FIFO may cause data loss if the data size is not integer
-           times of 2bytes. As SPI cannot set watermark to 0, only can set to 1/2 FIFO size or 3/4 FIFO
-           size. */
-        if (FSL_FEATURE_SPI_FIFO_SIZEn(base) != 0)
-        {
-            base->C3 &= ~SPI_C3_FIFOMODE_MASK;
-        }
-
-    #endif /* FSL_FEATURE_SPI_HAS_FIFO */
-
-        /* Begin the polling transfer until all data sent */
-        while (xfer->dataSize > 0)
-        {
-            /* Data send */
-            while ((base->S & SPI_S_SPTEF_MASK) == 0U)
-            {
-            }
-            SPI_WriteNonBlocking(base, xfer->txData, bytesPerFrame);
-            if (xfer->txData)
-            {
-                xfer->txData += bytesPerFrame;
-            }
-
-            while ((base->S & SPI_S_SPRF_MASK) == 0U)
-            {
-            }
-            SPI_ReadNonBlocking(base, xfer->rxData, bytesPerFrame);
-            if (xfer->rxData)
-            {
-                xfer->rxData += bytesPerFrame;
-            }
-
-            /* Decrease the number */
-            xfer->dataSize -= bytesPerFrame;
-        }
-
-        return kStatus_Success;
-    }
-
-
-#endif // EXAMPLE
+	// Disable DMA.
+	SPI_PERIPH->C2 = _c2;
+}

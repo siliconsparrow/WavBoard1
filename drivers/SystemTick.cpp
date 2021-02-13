@@ -10,6 +10,8 @@
 
 volatile unsigned g_systickCount = 0;
 
+#define SYSTICK_MS_PER_INTERRUPT (1000/SYSTICK_FREQ)
+
 // Configure the SysTick timer.
 void SystemTick::init()
 {
@@ -19,17 +21,17 @@ void SystemTick::init()
 
 extern "C" void SysTick_Handler()
 {
-	g_systickCount++;
+	g_systickCount += SYSTICK_MS_PER_INTERRUPT;
 }
 
-unsigned SystemTick::count()
+unsigned SystemTick::getMilliseconds()
 {
 	return g_systickCount;
 }
 
-void SystemTick::delayTicks(unsigned ticks)
+void SystemTick::delay(unsigned ms)
 {
 	unsigned tStart = g_systickCount;
-	while(g_systickCount - tStart < ticks)
+	while(g_systickCount - tStart < ms)
 		;
 }

@@ -12,20 +12,20 @@ class SystemTick
 {
 public:
 	static void     init();
-	static unsigned count();
-	static void     delayTicks(unsigned ticks);
+	static unsigned getMilliseconds();
+	static void     delay(unsigned ms);
 };
 
 class Timeout
 {
 public:
-	Timeout(unsigned ticks)
-		: _tFinish(SystemTick::count() + ticks)
+	Timeout(unsigned ms)
+		: _tFinish(SystemTick::getMilliseconds() + ms)
 	{ }
 
 	bool isExpired() const
 	{
-		unsigned dt = _tFinish - SystemTick::count();
+		unsigned dt = _tFinish - SystemTick::getMilliseconds();
 		return 0 != (0x80000000 & dt);
 	}
 

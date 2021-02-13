@@ -10,7 +10,8 @@
 #define SYSTICK_FREQ      100 // Number of systick interrupts per second.
 
 // Convert milliseconds to system ticks.
-#define MS_TO_TICKS(ms) (((ms)*(SYSTICK_FREQ))/1000)
+// No longer neccessary now that SystemTick converts to ms internally.
+//#define MS_TO_TICKS(ms) (((ms)*(SYSTICK_FREQ))/1000)
 
 
 // Definitions for the FlexIO-bases I2S driver.
@@ -50,6 +51,6 @@
 // SD Card chip select out on pin 5 (PTE16, alt2)
 #define SDCARD_CS_PORT Gpio::portE
 #define SDCARD_CS_PIN  16
-
+#define SDCARD_READONLY
 
 #endif

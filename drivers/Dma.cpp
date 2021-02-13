@@ -19,11 +19,6 @@ Dma::Dma(unsigned channel, DmaMuxChannel muxChan)
 	DMAMUX0->CHCFG[_channel] = DMAMUX_CHCFG_ENBL_MASK | muxChan;
 }
 
-//void Dma::setMuxChannel(DmaMuxChannel muxChan)
-//{
-//	DMAMUX0->CHCFG[_channel] = DMAMUX_CHCFG_ENBL_MASK | muxChan;
-//}
-
 void Dma::abort()
 {
 	FLEXIO_DMA->DMA[_channel].DSR_BCR |= DMA_DSR_BCR_DONE_MASK;
@@ -45,13 +40,8 @@ void Dma::startTransfer(void *srcAddr, void *destAddr, unsigned transferBytes, u
 	// Set transfer byte count
 	FLEXIO_DMA->DMA[_channel].DSR_BCR = DMA_DSR_BCR_BCR(transferBytes);
 
-	// Use cycle stealing (DMA transfer during unused clock cycles) if we are sending data to a peripheral.
-	//if((flags & (DMA_INC_SRC | DMA_INC_DST)) == DMA_INC_SRC)
-		flags |= DMA_DCR_CS_MASK;
-
 	// Set DMA Control Register
-	flags |= DMA_DCR_D_REQ_MASK; // Auto-clear the ERQ bit when done
-	FLEXIO_DMA->DMA[_channel].DCR = flags;
+	FLEXIO_DMA->DMA[_channel].DCR = DMA_DCR_D_REQ_MASK | DMA_DCR_CS_MASK | flags;
 
 	// Enable the interrupt handler if required.
 	if(0 != (flags & DMA_DCR_EINT_MASK)) {
